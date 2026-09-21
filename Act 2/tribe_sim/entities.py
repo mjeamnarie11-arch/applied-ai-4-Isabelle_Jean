@@ -172,47 +172,34 @@ class Gatherer:
     
     def calculate_fitness(self):
         """Score each gatherer's performance from 0 to 1."""
-        # Give a higher score for surviving longer.
-        survival_score = min(
-            max(self.age / GENERATION_LENGTH, 0.0), 1.0
-        )
 
-        # Reward food collected, but limit the bonus from extra food.
+        # Reward surviving longer.
+        survival_score = min(max(self.age / GENERATION_LENGTH, 0.0), 1.0)
+
+        # Reward food, with smaller rewards for extra amounts.
         food = max(self.food_collected, 0.0)
         food_score = 1.0 - math.exp(-food / 5.0)
 
-        # Check how much food the gatherer gets per second.
-        # Use at least one frame to avoid dividing by zero.
+        # Measure food per second without dividing by zero.
         seconds_alive = max(self.age / FPS, 1.0 / FPS)
         food_per_second = food / seconds_alive
         efficiency_score = 1.0 - math.exp(-food_per_second / 0.25)
 
-        # Count leftover energy only if the gatherer is alive.
+        # Count remaining energy only when alive.
         energy_score = 0.0
         if self.alive:
-            energy_score = min(
-                max(self.energy / GATHERER_MAX_ENERGY, 0.0),
-                1.0
-            )
+            energy_score = min(max(self.energy / GATHERER_MAX_ENERGY, 0.0), 1.0)
 
         # Give a small bonus for still being alive.
         alive_score = 1.0 if self.alive else 0.0
 
-        # Keep the cooperation value between 0 and 1.
-        cooperation = min(
-            max(self.genes["cooperation"], 0.0), 1.0
-        )
-
         # Test 30% cooperation as a possible strategy.
-        # The results will help show whether this choice works.
-        social_score = max(
-            0.0, 1.0 - abs(cooperation - 0.30) / 0.70
-        )
-
-        # Reduce this bonus when survival and food scores are low.
+        # This is not a proven best value.
+        cooperation = min(max(self.genes["cooperation"], 0.0), 1.0)
+        social_score = max(0.0, 1.0 - abs(cooperation - 0.30) / 0.70)
         social_score *= max(survival_score, food_score)
 
-        # Combine the scores, giving survival and food more weight.
+        # Give survival and food the most weight.
         fitness = (
             0.30 * survival_score
             + 0.30 * food_score
@@ -222,9 +209,9 @@ class Gatherer:
             + 0.05 * social_score
         )
 
-        # Return the new score and keep it between 0 and 1.
+        # Keep the final score between 0 and 1.
         return min(max(fitness, 0.0), 1.0)
-    
+
     def take_damage(self):
         """Handle death/life loss"""
         self.alive = False
