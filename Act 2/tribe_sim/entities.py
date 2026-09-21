@@ -171,37 +171,48 @@ class Gatherer:
         self.food_collected += portion
     
     def calculate_fitness(self):
-        """Score each gatherer's performance on a scale from 0 to 1."""
-        # Reward the portion of the generation the gatherer survived.
-        survival_score = min(max(self.age / GENERATION_LENGTH, 0.0),1.0)
-        # Reward food collection, with diminishing rewards for extra food.
+        """Score each gatherer's performance from 0 to 1."""
+        # Give a higher score for surviving longer.
+        survival_score = min(
+            max(self.age / GENERATION_LENGTH, 0.0), 1.0
+        )
+
+        # Reward food collected, but limit the bonus from extra food.
         food = max(self.food_collected, 0.0)
         food_score = 1.0 - math.exp(-food / 5.0)
-        # Reward food collected per second of simulated life.
-        # Use at least one frame of time to prevent division by zero.
+
+        # Check how much food the gatherer gets per second.
+        # Use at least one frame to avoid dividing by zero.
         seconds_alive = max(self.age / FPS, 1.0 / FPS)
         food_per_second = food / seconds_alive
         efficiency_score = 1.0 - math.exp(-food_per_second / 0.25)
 
-        # Remaining energy counts only if the gatherer is still alive.
+        # Count leftover energy only if the gatherer is alive.
         energy_score = 0.0
         if self.alive:
             energy_score = min(
                 max(self.energy / GATHERER_MAX_ENERGY, 0.0),
                 1.0
             )
-        # Add a reward for being alive when fitness is evaluated.
-        alive_score = 1.0 if self.alive else 0.0
-        # Keep the cooperation probability within its valid range.
-        cooperation = min(max(self.genes["cooperation"], 0.0), 1.0)
-        # Favor cooperation near 30% as a strategy to test.
-        # This preference is not a proven optimal cooperation rate.
-        social_score = max(0.0,1.0 - abs(cooperation - 0.30) / 0.70)
 
-        # Give social credit only in proportion to survival or food results.
+        # Give a small bonus for still being alive.
+        alive_score = 1.0 if self.alive else 0.0
+
+        # Keep the cooperation value between 0 and 1.
+        cooperation = min(
+            max(self.genes["cooperation"], 0.0), 1.0
+        )
+
+        # Test 30% cooperation as a possible strategy.
+        # The results will help show whether this choice works.
+        social_score = max(
+            0.0, 1.0 - abs(cooperation - 0.30) / 0.70
+        )
+
+        # Reduce this bonus when survival and food scores are low.
         social_score *= max(survival_score, food_score)
 
-        # Combine the rewards, emphasizing survival and food collection.
+        # Combine the scores, giving survival and food more weight.
         fitness = (
             0.30 * survival_score
             + 0.30 * food_score
@@ -210,6 +221,7 @@ class Gatherer:
             + 0.10 * alive_score
             + 0.05 * social_score
         )
+
         # Return the new score and keep it between 0 and 1.
         return min(max(fitness, 0.0), 1.0)
     
