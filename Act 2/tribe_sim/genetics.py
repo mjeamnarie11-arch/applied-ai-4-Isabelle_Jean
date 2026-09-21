@@ -69,24 +69,33 @@ class GeneticAlgorithm:
         return child
     
     def mutate(self, gatherer):
-        # STUDENT ASSIGNMENT 2: Implement a better mutation strategy
-        # Current version just randomly flips genes - very crude!
-        #
-        # Available information:
-        # - gatherer.genes: dict with 'speed', 'caution', 'search_pattern', 'efficiency', 'cooperation'
-        # - GENE_RANGES: dict with (min, max) values for each gene
-        # - MUTATION_RATE: probability of mutation (currently 0.1 = 10%)
-        # - MUTATION_STRENGTH: how much to change (currently 0.2 = ±20%)
-        #
-        # Strategy hints:
-        # 1. Current approach: percentage-based change (good for most genes)
-        # 2. Alternative: Gaussian/normal distribution around current value
-        # 3. Alternative: Fixed step size (add/subtract small amount)
-        # 4. Consider adaptive mutation (larger changes early, smaller later)
-        # 5. Maybe different strategies for different gene types?
-        # 6. Should all genes mutate equally? Maybe cooperation needs special handling?
-        #
-        # Remember: Mutation provides diversity but shouldn't destroy good solutions!
+        """Make small gene changes and sometimes try new values."""
+
+        # Make larger changes early and smaller changes later.
+        # Keep a minimum change size so variation continues.
+        scale = max(0.03, 0.10 / math.sqrt(self.generation))
+
+        for gene_name, current_value in gatherer.genes.items():
+            if random.random() < MUTATION_RATE:
+                min_val, max_val = GENE_RANGES[gene_name]
+                gene_range = max_val - min_val
+
+                if random.random() < 0.10:
+                    # Sometimes try a new value from the full range.
+                    new_value = random.uniform(min_val, max_val)
+                else:
+                    # Usually make a small change to the current value.
+                    new_value = current_value + random.gauss(
+                        0.0, scale * gene_range
+                    )
+
+                # Bounce values back inside the allowed range.
+                offset = (new_value - min_val) % (2 * gene_range)
+                gatherer.genes[gene_name] = min_val + (
+                    offset
+                    if offset <= gene_range
+                    else 2 * gene_range - offset
+                )
         
         for gene_name in gatherer.genes:
             if random.random() < MUTATION_RATE:
